@@ -1,0 +1,13 @@
+# Données en clair : ne doivent JAMAIS être publiées
+private/
+*.docx
+*.doc
+*.pdf
+*.txt
+~$*
+
+# Divers
+node_modules/
+.vscode/
+Thumbs.db
+desktop.ini

@@ -1,0 +1,290 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<!-- noindex demande aux moteurs de ne pas indexer la page. Ce n'est PAS une protection :
+     la confidentialité repose uniquement sur le chiffrement de vault.json. -->
+<meta name="robots" content="noindex, nofollow, noarchive, nosnippet, noimageindex">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; connect-src 'self'; img-src data:; base-uri 'none'; form-action 'none'">
+<link rel="icon" href="data:,">
+<title>Espace documents</title>
+<style>
+  :root {
+    --bg: #f4f5f7; --card: #fff; --text: #1d2330; --muted: #5d6676; --line: #dfe3ea;
+    --accent: #1f4e8c; --accent-hover: #173d6e; --accent-soft: #e8eef7;
+    --ok: #1e7a45; --err: #b3261e; --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #12151b; --card: #1b2028; --text: #e6e9ef; --muted: #9aa3b2; --line: #2c333f;
+      --accent: #6c9be0; --accent-hover: #8ab0e8; --accent-soft: #1f2a3a;
+      --ok: #5cc28a; --err: #f0857d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.55 "Segoe UI", system-ui, -apple-system, Roboto, Arial, sans-serif;
+  }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 24px 16px 48px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 20px; }
+  h1 { font-size: 1.35rem; margin: 0; }
+  h2 { font-size: 1.1rem; margin: 0 0 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; margin-bottom: 18px; }
+  .muted { color: var(--muted); font-size: .9rem; }
+  button {
+    font: inherit; font-size: .95rem; cursor: pointer; border-radius: 8px; padding: 9px 16px;
+    border: 1px solid var(--accent); background: var(--accent); color: #fff; white-space: nowrap;
+  }
+  button:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+  button:disabled { opacity: .6; cursor: progress; }
+  button.ghost { background: transparent; color: var(--accent); }
+  button.ghost:hover { background: var(--accent-soft); }
+  button:focus-visible, input:focus-visible { outline: 3px solid var(--accent-soft); outline-offset: 2px; }
+  .row { display: flex; flex-wrap: wrap; gap: 10px; }
+
+  #lock { max-width: 420px; margin: 8vh auto 0; }
+  #lock label { display: block; font-weight: 600; margin-bottom: 6px; }
+  #lock input {
+    width: 100%; font: inherit; padding: 10px 12px; border-radius: 8px;
+    border: 1px solid var(--line); background: var(--bg); color: var(--text); margin-bottom: 12px;
+  }
+  #lock button { width: 100%; }
+  .error { color: var(--err); min-height: 1.4em; margin: 10px 0 0; font-size: .92rem; }
+
+  .field { margin-bottom: 14px; }
+  .field-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 6px; }
+  .label { font-size: .8rem; font-weight: 600; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  .subject { font-weight: 600; padding: 10px 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; }
+  .body {
+    white-space: pre-wrap; padding: 14px; background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; max-height: 340px; overflow: auto; font-size: .95rem;
+  }
+  .toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px);
+    background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 8px;
+    opacity: 0; pointer-events: none; transition: opacity .2s, transform .2s; font-size: .92rem;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  .toast.err { background: var(--err); color: #fff; }
+  [hidden] { display: none !important; }
+  @media (max-width: 520px) {
+    .field-head { flex-direction: column; align-items: stretch; }
+    .row button { flex: 1 1 100%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Espace documents</h1>
+    <button id="lock-btn" class="ghost" type="button" hidden>Verrouiller</button>
+  </header>
+
+  <section id="lock" class="card">
+    <form id="lock-form" autocomplete="off">
+      <label for="pass">Mot de passe</label>
+      <input id="pass" type="password" autocomplete="off" required autofocus>
+      <button id="unlock" type="submit">Déverrouiller</button>
+      <p id="error" class="error" role="alert"></p>
+    </form>
+    <p class="muted">Le contenu est chiffré et n'est déchiffré que dans ce navigateur. N'enregistrez pas le mot de passe sur un poste partagé.</p>
+  </section>
+
+  <main id="app" hidden>
+    <section class="card">
+      <h2>Curriculum vitae</h2>
+      <div class="row" id="downloads"></div>
+    </section>
+    <div id="sections"></div>
+    <p class="muted">Copiez l'objet et le message, puis collez-les dans un nouveau mail Outlook. Verrouillage automatique après 10 minutes d'inactivité.</p>
+  </main>
+</div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  'use strict';
+  const $ = (s) => document.querySelector(s);
+  const enc = new TextEncoder();
+  const dec = new TextDecoder();
+  const fromB64 = (s) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+  const IDLE_MS = 10 * 60 * 1000;
+  let vault = null;
+  let state = null;
+  let idleTimer = 0;
+
+  async function loadVault() {
+    if (vault) return vault;
+    const res = await fetch('vault.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return (vault = await res.json());
+  }
+
+  async function deriveKey(pass, kdf) {
+    const base = await crypto.subtle.importKey('raw', enc.encode(pass.normalize('NFC')), 'PBKDF2', false, ['deriveKey']);
+    return crypto.subtle.deriveKey(
+      { name: 'PBKDF2', hash: kdf.hash, salt: fromB64(kdf.salt), iterations: kdf.iterations },
+      base, { name: 'AES-GCM', length: 256 }, false, ['decrypt']);
+  }
+
+  async function openItem(key, id) {
+    const item = vault.items[id];
+    const plain = await crypto.subtle.decrypt(
+      { name: 'AES-GCM', iv: fromB64(item.iv), additionalData: enc.encode(id) }, key, fromB64(item.ct));
+    return new Uint8Array(plain);
+  }
+
+  let toastTimer = 0;
+  function toast(msg, isError) {
+    const t = $('#toast');
+    t.textContent = msg;
+    t.classList.toggle('err', !!isError);
+    t.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove('show'), 2200);
+  }
+
+  async function copyText(text) {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch (e) { /* repli ci-dessous */ }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.setAttribute('readonly', '');
+    ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0';
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+    ta.remove();
+    return ok;
+  }
+
+  function selectNode(node) {
+    const range = document.createRange();
+    range.selectNodeContents(node);
+    const sel = getSelection();
+    sel.removeAllRanges();
+    sel.addRange(range);
+  }
+
+  function download(file) {
+    const url = URL.createObjectURL(new Blob([file.data], { type: file.type }));
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = file.name;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  }
+
+  function el(tag, props, children) {
+    const node = Object.assign(document.createElement(tag), props || {});
+    (children || []).forEach((c) => node.append(c));
+    return node;
+  }
+
+  function copyButton(label, getText, target) {
+    return el('button', {
+      type: 'button', className: 'ghost', textContent: label,
+      onclick: async () => {
+        if (await copyText(getText())) toast('Copié dans le presse-papiers');
+        else { selectNode(target); toast('Copie bloquée : texte sélectionné, faites Ctrl+C', true); }
+      },
+    });
+  }
+
+  function render() {
+    const { meta, files } = state;
+    const dl = $('#downloads');
+    dl.replaceChildren();
+    if (files.docx) dl.append(el('button', { type: 'button', textContent: 'Télécharger le CV (Word)', onclick: () => download(files.docx) }));
+    if (files.pdf) dl.append(el('button', { type: 'button', className: 'ghost', textContent: 'Télécharger le CV (PDF)', onclick: () => download(files.pdf) }));
+
+    const box = $('#sections');
+    box.replaceChildren();
+    meta.sections.forEach((s) => {
+      const subject = el('div', { className: 'subject', textContent: s.subject });
+      const body = el('div', { className: 'body', textContent: s.body });
+      box.append(el('section', { className: 'card' }, [
+        el('h2', { textContent: s.title }),
+        el('div', { className: 'field' }, [
+          el('div', { className: 'field-head' }, [el('span', { className: 'label', textContent: 'Objet' }), copyButton("Copier l'objet", () => s.subject, subject)]),
+          subject,
+        ]),
+        el('div', { className: 'field' }, [
+          el('div', { className: 'field-head' }, [el('span', { className: 'label', textContent: 'Message' }), copyButton('Copier le mail', () => s.body, body)]),
+          body,
+        ]),
+      ]));
+    });
+
+    $('#lock').hidden = true;
+    $('#app').hidden = false;
+    $('#lock-btn').hidden = false;
+    resetIdle();
+  }
+
+  function lock() {
+    state = null;
+    clearTimeout(idleTimer);
+    $('#downloads').replaceChildren();
+    $('#sections').replaceChildren();
+    $('#app').hidden = true;
+    $('#lock-btn').hidden = true;
+    $('#lock').hidden = false;
+    $('#pass').focus();
+  }
+
+  function resetIdle() {
+    if (!state) return;
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(lock, IDLE_MS);
+  }
+
+  $('#lock-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const input = $('#pass');
+    const btn = $('#unlock');
+    const error = $('#error');
+    error.textContent = '';
+    if (!window.isSecureContext || !window.crypto || !crypto.subtle) {
+      error.textContent = 'Ce navigateur ne permet pas le déchiffrement (connexion HTTPS requise).';
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Déchiffrement…';
+    try {
+      try { await loadVault(); } catch (err) { throw new Error('load'); }
+      const key = await deriveKey(input.value, vault.kdf);
+      const meta = JSON.parse(dec.decode(await openItem(key, 'meta')));
+      const files = {};
+      for (const id of Object.keys(meta.files)) {
+        if (vault.items[id]) files[id] = { ...meta.files[id], data: await openItem(key, id) };
+      }
+      input.value = '';
+      state = { meta, files };
+      render();
+    } catch (err) {
+      error.textContent = err.message === 'load'
+        ? 'Impossible de charger les données chiffrées.'
+        : 'Mot de passe incorrect.';
+      input.select();
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Déverrouiller';
+    }
+  });
+
+  $('#lock-btn').addEventListener('click', lock);
+  ['pointerdown', 'keydown', 'scroll'].forEach((ev) => addEventListener(ev, resetIdle, { passive: true }));
+})();
+</script>
+</body>
+</html>
